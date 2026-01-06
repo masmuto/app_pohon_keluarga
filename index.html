@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GenoTree Portal - Multi-Family Cloud Admin</title>
+    <title>GenoTree Portal - Platform Silsilah Keluarga Cloud</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
@@ -16,7 +16,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; background-color: #f8fafc; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
         .member-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .member-card:hover { transform: translateY(-8px) scale(1.02); }
         .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
@@ -25,10 +25,11 @@
         ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .canvas-container { cursor: grab; }
         .canvas-container:active { cursor: grabbing; }
-        .portal-bg { background: radial-gradient(circle at top right, #4f46e5 0%, #1e1b4b 100%); }
-        .glass-panel { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .portal-gradient { background: linear-gradient(135deg, #4f46e5 0%, #1e1b4b 100%); }
+        .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .pulse-border { animation: pulse-indigo 2s infinite; }
         @keyframes pulse-indigo { 0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); } 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); } }
+        .landing-section { scroll-behavior: smooth; }
     </style>
 </head>
 <body>
@@ -56,6 +57,11 @@
         const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'pohon-keluarga-portal';
 
+        // Konfigurasi Admin & WA
+        const ADMIN_WA = "6282328588035";
+        const WA_LINK = `https://wa.me/${ADMIN_WA}?text=Halo%20Admin%20GenoTree%2C%20saya%20ingin%20request%20ID%20Keluarga%20baru%20untuk%20silsilah%20kami.`;
+        const MASTER_PIN = "0000"; 
+
         const Icon = ({ name, size = 20, className = "" }) => {
             const spanRef = useRef(null);
             useEffect(() => {
@@ -73,8 +79,44 @@
             return <span ref={spanRef} className="inline-flex items-center justify-center shrink-0" />;
         };
 
+        // --- KOMPONEN NODE POHON ---
+        const RecursiveNode = ({ node, selectedMember, setSelectedMember, getRole }) => (
+            <div className="flex flex-col items-center">
+                <div className="flex items-center gap-16 relative">
+                    <div 
+                        onClick={(e) => { e.stopPropagation(); setSelectedMember(node); }}
+                        className={`member-card relative cursor-pointer p-5 rounded-[2.5rem] shadow-xl border-2 transition-all w-56 bg-white
+                            ${selectedMember?.id === node.id ? 'border-indigo-600 ring-8 ring-indigo-50 scale-105 z-20' : 'border-slate-50'}`}
+                    >
+                        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white shadow-lg ${node.gender === 'Laki-laki' ? 'bg-indigo-600' : 'bg-rose-600'}`}>{node.gender}</div>
+                        <div className="flex flex-col items-center text-center space-y-4">
+                            <div className={`w-24 h-24 rounded-[2rem] border-4 overflow-hidden shadow-inner flex items-center justify-center bg-slate-50 ${node.gender === 'Laki-laki' ? 'border-indigo-50' : 'border-rose-50'}`}>{node.photoUrl ? <img src={node.photoUrl} className="w-full h-full object-cover" /> : <Icon name="user" size={40} className="opacity-10" />}</div>
+                            <div className="w-full"><h3 className="font-extrabold text-slate-800 leading-none text-base truncate px-2 uppercase">{node.name}</h3><p className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-tighter">{node.job || 'Anggota Keluarga'}</p></div>
+                        </div>
+                    </div>
+                    {node.spouse && (
+                        <React.Fragment>
+                            <div className="w-16 h-1 bg-slate-100 flex items-center justify-center relative"><div className="absolute bg-white p-1.5 rounded-full border-2 border-slate-50 shadow-md z-10"><Icon name="heart" size={16} className="text-rose-500 fill-rose-500" /></div></div>
+                            <div onClick={(e) => { e.stopPropagation(); setSelectedMember(node.spouse); }} className={`member-card relative cursor-pointer p-5 rounded-[2.5rem] shadow-xl border-2 transition-all w-56 bg-white ${selectedMember?.id === node.spouse.id ? 'border-indigo-600 ring-8 ring-indigo-50 scale-105 z-20' : 'border-slate-50'}`}>
+                                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white shadow-lg bg-rose-600`}>Pasangan</div>
+                                <div className="flex flex-col items-center text-center space-y-4">
+                                    <div className="w-24 h-24 rounded-[2rem] border-4 border-rose-50 overflow-hidden shadow-inner flex items-center justify-center bg-slate-50">{node.spouse.photoUrl ? <img src={node.spouse.photoUrl} className="w-full h-full object-cover" /> : <Icon name="user" size={40} className="opacity-10" />}</div>
+                                    <div className="w-full"><h3 className="font-extrabold text-slate-800 leading-none text-base truncate px-2 uppercase">{node.spouse.name}</h3><p className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-tighter">{node.spouse.job || 'Pasangan'}</p></div>
+                                </div>
+                            </div>
+                        </React.Fragment>
+                    )}
+                </div>
+                {node.children && node.children.length > 0 && (
+                    <div className="relative pt-20 flex gap-12"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-20 bg-slate-100"></div>
+                    {node.children.length > 1 && (<div className="absolute top-20 left-0 right-0 flex justify-center"><div className="h-1 bg-slate-100" style={{ width: `calc(100% - 224px)` }}></div></div>)}
+                    {node.children.map(child => (<div key={child.id} className="relative pt-10"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-10 bg-slate-100"></div><RecursiveNode node={child} selectedMember={selectedMember} setSelectedMember={setSelectedMember} getRole={getRole} /></div>))}</div>
+                )}
+            </div>
+        );
+
         const App = () => {
-            // --- STATE (Semua Hooks diletakkan di atas sesuai aturan) ---
+            // --- STATE & HOOKS ---
             const [user, setUser] = useState(null);
             const [currentFamilyId, setCurrentFamilyId] = useState(localStorage.getItem('geno_family_id') || null);
             const [members, setMembers] = useState([]);
@@ -90,7 +132,7 @@
             const [isAddingSpouse, setIsAddingSpouse] = useState(false);
             const [targetId, setTargetId] = useState(null);
             const [showPinPrompt, setShowPinPrompt] = useState(false);
-            const [pinMode, setPinMode] = useState('family'); 
+            const [pinMode, setPinMode] = useState('family'); // 'family' atau 'master'
             const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
             const [isLoading, setIsLoading] = useState(true);
             const [portalInput, setPortalInput] = useState('');
@@ -98,7 +140,8 @@
             const [showAddFamilyModal, setShowAddFamilyModal] = useState(false);
             const [newFamilyForm, setNewFamilyForm] = useState({ id: '', name: '', pin: '1234' });
 
-            const MASTER_PIN = "0000"; 
+            const [isEditingFamilySettings, setIsEditingFamilySettings] = useState(false);
+            const [familySettingsForm, setFamilySettingsForm] = useState({ name: '', pin: '' });
 
             const [formData, setFormData] = useState({ name: '', gender: 'Laki-laki', birthDate: '', job: '', photoUrl: '', bio: '', phone: '' });
             const [zoom, setZoom] = useState(0.8);
@@ -108,7 +151,7 @@
             const [pinInput, setPinInput] = useState('');
             const [pinError, setPinError] = useState(false);
 
-            // Auth Effect
+            // Auth
             useEffect(() => {
                 const performAuth = async () => {
                     try {
@@ -124,7 +167,7 @@
                 return () => unsubscribe();
             }, []);
 
-            // Firestore Sync Effect
+            // Firestore Sync
             useEffect(() => {
                 if (!user || !currentFamilyId || viewMode === 'master_dashboard') {
                     if (!currentFamilyId && viewMode !== 'master_dashboard') setIsLoading(false);
@@ -137,7 +180,7 @@
                     const allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setMembers(allData.filter(m => m.familyId === currentFamilyId));
                     setIsLoading(false);
-                });
+                }, (err) => { setIsLoading(false); });
 
                 const configDoc = doc(db, 'artifacts', appId, 'public', 'data', 'family_configs', currentFamilyId);
                 const unsubscribeConfig = onSnapshot(configDoc, (snapshot) => {
@@ -145,12 +188,11 @@
                         const data = snapshot.data();
                         setFamilyName(data.name || 'Keluarga');
                         setAccessPin(data.pin || '1234');
+                        setFamilySettingsForm({ name: data.name || 'Keluarga', pin: data.pin || '1234' });
                     } else {
-                        // Handle ID baru yang belum ada di DB
                         const defaultName = `Keluarga ${currentFamilyId}`;
                         setFamilyName(defaultName);
                         setAccessPin('1234');
-                        // Daftarkan otomatis di DB
                         setDoc(configDoc, { name: defaultName, pin: '1234', createdAt: new Date() });
                     }
                 });
@@ -158,7 +200,7 @@
                 return () => { unsubscribeMembers(); unsubscribeConfig(); };
             }, [user, currentFamilyId, viewMode]);
 
-            // Master Data Effect
+            // Master Data Sync
             useEffect(() => {
                 if (isMasterAdmin && viewMode === 'master_dashboard') {
                     const familyConfigsCol = collection(db, 'artifacts', appId, 'public', 'data', 'family_configs');
@@ -169,7 +211,7 @@
                 }
             }, [isMasterAdmin, viewMode]);
 
-            // Tree Data Memoization
+            // Tree Data Memoized
             const treeData = useMemo(() => {
                 const build = (parentId = null) => members.filter(m => m.parentId === parentId && !isSecondarySpouse(m)).map(m => ({ ...m, spouse: m.spouseId ? members.find(s => s.id === m.spouseId) : null, children: build(m.id) }));
                 const isSecondarySpouse = (m) => {
@@ -197,6 +239,7 @@
                 setViewMode('tree');
                 setPortalInput('');
                 setPortalError('');
+                window.scrollTo(0,0);
             };
 
             const logoutPortal = () => { 
@@ -211,9 +254,19 @@
             const verifyPin = () => {
                 const target = pinMode === 'master' ? MASTER_PIN : accessPin;
                 if (pinInput === target) {
-                    if (pinMode === 'master') { setIsMasterAdmin(true); setViewMode('master_dashboard'); } else { setIsAdmin(true); }
-                    setShowPinPrompt(false); setPinInput(''); setPinError(false);
-                } else { setPinError(true); setTimeout(() => setPinError(false), 800); }
+                    if (pinMode === 'master') { 
+                        setIsMasterAdmin(true); 
+                        setViewMode('master_dashboard'); 
+                    } else { 
+                        setIsAdmin(true); 
+                    }
+                    setShowPinPrompt(false); 
+                    setPinInput(''); 
+                    setPinError(false);
+                } else { 
+                    setPinError(true); 
+                    setTimeout(() => setPinError(false), 800); 
+                }
             };
 
             const handleAddFamily = async () => {
@@ -227,7 +280,20 @@
                     });
                     setShowAddFamilyModal(false);
                     setNewFamilyForm({ id: '', name: '', pin: '1234' });
-                } catch (e) { console.error("Gagal tambah keluarga:", e); }
+                } catch (e) { console.error(e); }
+            };
+
+            const saveFamilySettings = async () => {
+                if (!familySettingsForm.name || !familySettingsForm.pin) return;
+                try {
+                    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'family_configs', currentFamilyId);
+                    await updateDoc(configRef, {
+                        name: familySettingsForm.name,
+                        pin: familySettingsForm.pin
+                    });
+                    setIsEditingFamilySettings(false);
+                    if (familySettingsForm.pin !== accessPin) setIsAdmin(false); // Keluar mode edit jika pin berubah
+                } catch (e) { console.error("Update failed", e); }
             };
 
             const deleteFamily = async (famId) => {
@@ -275,37 +341,14 @@
             const confirmDelete = async () => { try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', selectedMember.id)); setSelectedMember(null); setShowDeleteConfirm(false); } catch (e) { console.error(e); } };
             const getRole = (m) => { if (!m.parentId && !m.spouseId) return "Kepala Keluarga"; if (m.spouseId && !m.parentId) return "Pasangan"; if (m.parentId) return "Anak"; return "Anggota"; };
 
-            // --- VIEW LOGIC ---
+            // --- RENDER LOGIC ---
 
-            // 1. Landing Portal
-            if (!currentFamilyId && viewMode !== 'master_dashboard') return (
-                <div className="h-screen w-full portal-bg flex items-center justify-center p-6 relative">
-                    <button onClick={() => { setPinMode('master'); setShowPinPrompt(true); }} className="absolute bottom-8 right-8 p-3 glass-panel rounded-full text-white/20 hover:text-white/80 transition-all"><Icon name="shield-check" size={16} /></button>
-                    <div className="bg-white/10 backdrop-blur-3xl p-12 rounded-[4rem] border border-white/20 shadow-2xl max-w-lg w-full text-center space-y-10 animate-in fade-in zoom-in duration-500">
-                        <div className="space-y-4">
-                            <div className="w-24 h-24 bg-white rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl rotate-3"><Icon name="layout-template" size={48} className="text-indigo-600" /></div>
-                            <h1 className="text-4xl font-black text-white tracking-tighter">GENOTREE PORTAL</h1>
-                            <p className="text-indigo-100/60 font-medium px-8">Platform cloud untuk manajemen silsilah keluarga dalam skala besar.</p>
-                        </div>
-                        <div className="space-y-6">
-                            <div className="space-y-2 text-left">
-                                <label className="text-[10px] font-black text-indigo-200 uppercase tracking-widest ml-4">ID Keluarga / Kode Ruang</label>
-                                <input type="text" placeholder="contoh: bani-hasyim" className="w-full px-8 py-6 rounded-3xl bg-white/10 border-2 border-white/10 text-white placeholder:text-white/30 font-bold text-xl outline-none focus:border-white/40 transition-all uppercase tracking-widest" value={portalInput} onChange={(e) => setPortalInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && joinFamily()} />
-                                {portalError && <p className="text-red-300 text-[10px] font-black uppercase ml-4 mt-2">{portalError}</p>}
-                            </div>
-                            <button onClick={joinFamily} className="w-full py-6 bg-white text-indigo-900 rounded-3xl font-black text-lg shadow-2xl hover:bg-indigo-50 transition-all active:scale-95 flex items-center justify-center gap-3">MASUK KE KELUARGA <Icon name="arrow-right" /></button>
-                        </div>
-                    </div>
-                    {showPinPrompt && <div className="fixed inset-0 bg-black/80 backdrop-blur-2xl z-[200] flex items-center justify-center p-6"><div className="bg-white rounded-[3rem] p-12 max-w-sm w-full text-center space-y-8 shadow-2xl animate-in zoom-in-95 duration-200"><div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto transition-all ${pinError ? 'bg-red-600 text-white animate-shake' : 'bg-indigo-600 text-white'}`}><Icon name="key-round" size={32} /></div><div><h3 className="text-2xl font-black text-slate-800 tracking-tighter leading-none">{pinMode === 'master' ? 'Master Access' : 'Akses Silsilah'}</h3><p className="text-slate-400 text-sm mt-2">Masukkan PIN keamanan untuk melanjutkan.</p></div><input type="password" maxLength={4} autoFocus placeholder="••••" className="w-full text-center text-5xl tracking-[1.5rem] py-8 rounded-[2rem] bg-slate-50 border-4 border-slate-100 outline-none" value={pinInput} onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))} onKeyDown={(e) => e.key === 'Enter' && verifyPin()} /><div className="flex gap-4 pt-4"><button onClick={() => setShowPinPrompt(false)} className="flex-1 py-5 text-slate-400 font-black uppercase text-[11px] tracking-widest">Batal</button><button onClick={verifyPin} className="flex-[2] py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest shadow-xl hover:bg-indigo-700">Verifikasi</button></div></div></div>}
-                </div>
-            );
-
-            // 2. Master Dashboard View
+            // 1. MASTER DASHBOARD VIEW
             if (viewMode === 'master_dashboard') return (
                 <div className="h-screen w-full bg-slate-900 flex flex-col overflow-hidden text-white">
                     <header className="p-8 border-b border-white/10 flex justify-between items-center bg-black/30 backdrop-blur-xl">
-                        <div className="flex items-center gap-4"><div className="p-3 bg-indigo-600 rounded-2xl"><Icon name="shield-check" size={24} /></div><div><h1 className="text-2xl font-black tracking-tighter uppercase leading-none">MASTER DASHBOARD</h1><p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-2">GenoTree Portal Management</p></div></div>
-                        <button onClick={logoutPortal} className="px-8 py-3 bg-white/10 hover:bg-white/20 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Keluar Dashboard</button>
+                        <div className="flex items-center gap-4"><div className="p-3 bg-indigo-600 rounded-2xl"><Icon name="shield-check" size={24} /></div><div><h1 className="text-2xl font-black tracking-tighter uppercase leading-none">MASTER DASHBOARD</h1><p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-2 leading-none">GenoTree Portal Management</p></div></div>
+                        <button onClick={logoutPortal} className="px-8 py-3 bg-white/10 hover:bg-white/20 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Keluar Portal</button>
                     </header>
                     <main className="flex-1 overflow-y-auto p-12">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -316,10 +359,10 @@
                                     <div className="relative z-10 space-y-6">
                                         <div className="flex justify-between items-start">
                                             <div><p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">ID: {fam.id}</p><h3 className="text-xl font-extrabold truncate w-48">{fam.name}</h3></div>
-                                            <div className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">PIN: {fam.pin}</div>
+                                            <div className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest leading-none">PIN: {fam.pin}</div>
                                         </div>
                                         <div className="flex gap-3 pt-4 border-t border-white/5">
-                                            <button onClick={() => { setCurrentFamilyId(fam.id); setViewMode('tree'); }} className="flex-1 py-3 bg-white text-indigo-900 rounded-xl font-black text-[10px] uppercase tracking-widest">LIHAT POHON</button>
+                                            <button onClick={() => { setCurrentFamilyId(fam.id); setViewMode('tree'); }} className="flex-1 py-3 bg-white text-indigo-900 rounded-xl font-black text-[10px] uppercase tracking-widest leading-none">Lihat Pohon</button>
                                             <button onClick={() => deleteFamily(fam.id)} className="p-3 bg-rose-600/20 text-rose-500 hover:bg-rose-600 hover:text-white rounded-xl transition-all"><Icon name="trash-2" size={18} /></button>
                                         </div>
                                     </div>
@@ -343,79 +386,138 @@
                 </div>
             );
 
-            // 3. Normal Tree View Components
-            const RecursiveNode = ({ node }) => (
-                <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-16 relative">
-                        <div 
-                            onClick={(e) => { e.stopPropagation(); setSelectedMember(node); }}
-                            className={`member-card relative cursor-pointer p-5 rounded-[2.5rem] shadow-xl border-2 transition-all w-56 bg-white
-                                ${selectedMember?.id === node.id ? 'border-indigo-600 ring-8 ring-indigo-50 scale-105 z-20' : 'border-slate-50'}`}
-                        >
-                            <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white shadow-lg ${node.gender === 'Laki-laki' ? 'bg-indigo-600' : 'bg-rose-600'}`}>{node.gender}</div>
-                            <div className="flex flex-col items-center text-center space-y-4">
-                                <div className={`w-24 h-24 rounded-[2rem] border-4 overflow-hidden shadow-inner flex items-center justify-center bg-slate-50 ${node.gender === 'Laki-laki' ? 'border-indigo-50' : 'border-rose-50'}`}>{node.photoUrl ? <img src={node.photoUrl} className="w-full h-full object-cover" /> : <Icon name="user" size={40} className="opacity-10" />}</div>
-                                <div className="w-full"><h3 className="font-extrabold text-slate-800 leading-none text-base truncate px-2">{node.name}</h3><p className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-tighter">{node.job || 'Anggota Keluarga'}</p></div>
-                            </div>
+            // 2. LANDING PAGE PORTAL
+            if (!currentFamilyId && viewMode !== 'master_dashboard') return (
+                <div className="min-h-screen w-full bg-slate-50 overflow-x-hidden landing-section flex flex-col">
+                    <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6 flex justify-between items-center bg-white/80 backdrop-blur-xl border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg"><Icon name="layout-template" size={20} /></div>
+                            <span className="text-xl font-black tracking-tighter text-slate-800">GENOTREE</span>
                         </div>
-                        {node.spouse && (
-                            <React.Fragment>
-                                <div className="w-16 h-1 bg-slate-100 flex items-center justify-center relative"><div className="absolute bg-white p-1.5 rounded-full border-2 border-slate-50 shadow-md z-10"><Icon name="heart" size={16} className="text-rose-500 fill-rose-500" /></div></div>
-                                <div onClick={(e) => { e.stopPropagation(); setSelectedMember(node.spouse); }} className={`member-card relative cursor-pointer p-5 rounded-[2.5rem] shadow-xl border-2 transition-all w-56 bg-white ${selectedMember?.id === node.spouse.id ? 'border-indigo-600 ring-8 ring-indigo-50 scale-105 z-20' : 'border-slate-50'}`}>
-                                    <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white shadow-lg bg-rose-600`}>Pasangan</div>
-                                    <div className="flex flex-col items-center text-center space-y-4">
-                                        <div className="w-24 h-24 rounded-[2rem] border-4 border-rose-50 overflow-hidden shadow-inner flex items-center justify-center bg-slate-50">{node.spouse.photoUrl ? <img src={node.spouse.photoUrl} className="w-full h-full object-cover" /> : <Icon name="user" size={40} className="opacity-10" />}</div>
-                                        <div className="w-full"><h3 className="font-extrabold text-slate-800 leading-none text-base truncate px-2">{node.spouse.name}</h3><p className="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-tighter">{node.spouse.job || 'Pasangan'}</p></div>
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => { setPinMode('master'); setShowPinPrompt(true); }} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 transition-all border border-slate-200 px-4 py-2.5 rounded-xl bg-white shadow-sm">
+                                <Icon name="shield-check" size={14} /> Akses Admin
+                            </button>
+                            <button onClick={() => document.getElementById('login-box').scrollIntoView({ behavior: 'smooth' })} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all leading-none">Mulai Sekarang</button>
+                        </div>
+                    </nav>
+
+                    <section className="relative pt-40 pb-32 px-8 portal-gradient flex-1 flex flex-col items-center justify-center">
+                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+                        <div className="max-w-7xl w-full mx-auto flex flex-col lg:flex-row items-center gap-16 relative z-10">
+                            <div className="flex-1 space-y-8 text-center lg:text-left">
+                                <div className="inline-block px-4 py-1.5 bg-white/10 rounded-full border border-white/20 text-indigo-100 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">Platform Silsilah Keluarga Cloud</div>
+                                <h1 className="text-5xl lg:text-7xl font-black text-white tracking-tighter leading-[0.9]">Abadikan Sejarah <br/><span className="text-indigo-300">Keluarga Anda</span> Selamanya.</h1>
+                                <p className="text-lg text-indigo-100/70 font-medium max-w-xl leading-relaxed mx-auto lg:mx-0">Kelola silsilah keturunan dengan mudah, aman, dan dapat diakses dari mana saja.</p>
+                                <div className="flex flex-wrap justify-center lg:justify-start gap-6 text-white/60">
+                                    <div className="flex items-center gap-2"><Icon name="check-circle" size={16} className="text-emerald-400" /> <span className="text-xs font-bold uppercase tracking-tight leading-none">Cloud Sync</span></div>
+                                    <div className="flex items-center gap-2"><Icon name="check-circle" size={16} className="text-emerald-400" /> <span className="text-xs font-bold uppercase tracking-tight leading-none">Multi-Family</span></div>
+                                    <div className="flex items-center gap-2"><Icon name="check-circle" size={16} className="text-emerald-400" /> <span className="text-xs font-bold uppercase tracking-tight leading-none">Privasi Aman</span></div>
+                                </div>
+                            </div>
+                            <div id="login-box" className="w-full max-w-md">
+                                <div className="bg-white rounded-[3rem] p-10 shadow-2xl border border-white shadow-indigo-900/20">
+                                    <div className="text-center space-y-2 mb-8">
+                                        <h2 className="text-2xl font-black text-slate-800 tracking-tighter uppercase leading-none">MASUK PORTAL</h2>
+                                        <p className="text-xs font-medium text-slate-400 mt-3 leading-relaxed">Masukkan ID Keluarga untuk melihat diagram silsilah.</p>
+                                    </div>
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">ID Keluarga / Kode Ruang</label>
+                                            <input type="text" placeholder="contoh: bani-hasyim" className="w-full px-8 py-5 rounded-3xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white text-slate-800 placeholder:text-slate-300 font-bold text-xl outline-none transition-all uppercase tracking-widest" value={portalInput} onChange={(e) => setPortalInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && joinFamily()} />
+                                            {portalError && <p className="text-red-500 text-[10px] font-black uppercase ml-4 mt-2">{portalError}</p>}
+                                        </div>
+                                        <button onClick={joinFamily} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-lg shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 leading-none">MASUK KE RUANG <Icon name="arrow-right" /></button>
+                                        <div className="pt-6 border-t border-slate-50 flex flex-col items-center space-y-4">
+                                            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] text-center leading-relaxed">Belum punya ID Keluarga atau lupa kodenya?</p>
+                                            <a href={WA_LINK} target="_blank" className="w-full flex items-center justify-center gap-2 py-4 bg-emerald-50 text-emerald-700 rounded-2xl font-black text-[11px] uppercase tracking-widest border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all leading-none">
+                                                <Icon name="message-circle" size={16} /> Request ID via WhatsApp
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
-                            </React.Fragment>
-                        )}
-                    </div>
-                    {node.children && node.children.length > 0 && (
-                        <div className="relative pt-20 flex gap-12"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-20 bg-slate-100"></div>
-                        {node.children.length > 1 && (<div className="absolute top-20 left-0 right-0 flex justify-center"><div className="h-1 bg-slate-100" style={{ width: `calc(100% - 224px)` }}></div></div>)}
-                        {node.children.map(child => (<div key={child.id} className="relative pt-10"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-10 bg-slate-100"></div><RecursiveNode node={child} /></div>))}</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <footer className="py-12 px-8 bg-slate-900 text-white">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+                            <div className="text-center md:text-left space-y-2">
+                                <div className="flex items-center justify-center md:justify-start gap-2">
+                                    <div className="p-2 bg-indigo-600 rounded-xl text-white shadow-lg"><Icon name="layout-template" size={16} /></div>
+                                    <span className="text-lg font-black tracking-tighter uppercase leading-none">GENOTREE PORTAL</span>
+                                </div>
+                                <p className="text-slate-500 text-xs font-medium leading-none">Platform Silsilah Cloud. © 2026 GenoTree Team.</p>
+                            </div>
+                            <div className="flex flex-wrap justify-center md:justify-end gap-8 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                <button onClick={() => { setPinMode('master'); setShowPinPrompt(true); }} className="hover:text-indigo-400 transition-all flex items-center gap-1"><Icon name="shield-check" size={12} /> Dashboard Admin</button>
+                                <a href={WA_LINK} target="_blank" className="hover:text-emerald-400 transition-all">Kontak</a>
+                                <a href="#" className="hover:text-indigo-400 transition-all">Privasi</a>
+                            </div>
+                        </div>
+                    </footer>
+
+                    {/* Unified PIN Prompt Modal */}
+                    {showPinPrompt && (
+                        <div className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[500] flex items-center justify-center p-6">
+                            <div className="bg-white rounded-[3rem] p-12 max-w-sm w-full text-center space-y-8 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+                                <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto transition-all ${pinError ? 'bg-red-600 text-white animate-shake shadow-[0_0_30px_rgba(220,38,38,0.3)]' : 'bg-indigo-600 text-white shadow-[0_0_30px_rgba(79,70,229,0.3)]'}`}>
+                                    <Icon name="key-round" size={32} />
+                                </div>
+                                <div><h3 className="text-2xl font-black text-slate-800 tracking-tighter leading-none uppercase">{pinMode === 'master' ? 'Master Access' : 'Buka Kunci Silsilah'}</h3><p className="text-slate-400 text-xs mt-3 font-medium">Masukkan 4 digit PIN keamanan untuk melanjutkan.</p></div>
+                                <input type="password" maxLength={4} autoFocus placeholder="••••" className="w-full text-center text-5xl tracking-[1.5rem] py-8 rounded-[2rem] bg-slate-50 border-4 border-slate-100 outline-none focus:border-indigo-600 transition-all" value={pinInput} onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))} onKeyDown={(e) => e.key === 'Enter' && verifyPin()} />
+                                <div className="flex gap-4 pt-2">
+                                    <button onClick={() => { setShowPinPrompt(false); setPinInput(''); }} className="flex-1 py-5 text-slate-400 font-black uppercase text-[11px] tracking-widest leading-none">Batal</button>
+                                    <button onClick={verifyPin} className="flex-[2] py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest shadow-xl hover:bg-indigo-700 transition-all leading-none">Verifikasi</button>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             );
 
-            if (isLoading) return <div className="h-screen w-full flex flex-col items-center justify-center bg-white space-y-4"><div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sinkronisasi Cloud...</p></div>;
+            // 3. TREE VIEW (Aplikasi Utama)
+            if (isLoading) return <div className="h-screen w-full flex flex-col items-center justify-center bg-white space-y-4"><div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Sinkronisasi Cloud...</p></div>;
 
             return (
-                <div className="flex h-screen bg-white">
+                <div className="flex h-screen bg-white relative overflow-hidden">
                     <aside className="w-80 bg-white border-r border-slate-100 flex flex-col shadow-2xl z-40">
                         <div className="p-8 border-b border-slate-50 bg-indigo-900 text-white relative overflow-hidden">
-                            <div className="flex items-center gap-3 mb-6 relative z-10"><div className="p-2.5 bg-white/10 rounded-2xl"><Icon name="layout-template" size={24} /></div><h1 className="text-2xl font-black tracking-tighter leading-none">GENOTREE</h1></div>
+                            <div className="flex items-center gap-3 mb-6 relative z-10"><div className="p-2.5 bg-white/10 rounded-2xl"><Icon name="layout-template" size={24} /></div><h1 className="text-2xl font-black tracking-tighter leading-none uppercase">GENOTREE</h1></div>
                             <div className="relative z-10 space-y-4">
-                                <div><p className="text-white/40 text-[9px] font-black uppercase tracking-widest mb-1">Ruang Keluarga</p><h2 className="text-xl font-black leading-none truncate">{familyName}</h2><p className="text-indigo-300 text-[10px] font-bold mt-2">ID: {currentFamilyId?.toUpperCase()}</p></div>
-                                <div className="flex gap-2"><button onClick={logoutPortal} className="flex items-center gap-2 text-[10px] font-black uppercase bg-white/10 px-4 py-2 rounded-xl hover:bg-white/20 transition-all"><Icon name="log-out" size={14} /> Keluar</button>{isMasterAdmin && <button onClick={() => setViewMode('master_dashboard')} className="flex items-center gap-2 text-[10px] font-black uppercase bg-emerald-600 px-4 py-2 rounded-xl transition-all"><Icon name="shield-check" size={14} /> Master</button>}</div>
+                                <div>
+                                    <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mb-1 leading-none">Ruang Keluarga</p>
+                                    <div className="flex items-center gap-2 group">
+                                        <h2 className="text-xl font-black leading-tight truncate uppercase">{familyName}</h2>
+                                        {isAdmin && (
+                                            <button onClick={() => setIsEditingFamilySettings(true)} className="p-1.5 hover:bg-white/10 rounded-lg text-indigo-300 transition-all opacity-0 group-hover:opacity-100">
+                                                <Icon name="settings" size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="text-indigo-300 text-[10px] font-bold mt-2 leading-none uppercase tracking-tighter">ID: {currentFamilyId}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={logoutPortal} className="flex items-center gap-2 text-[10px] font-black uppercase bg-white/10 px-4 py-2.5 rounded-xl hover:bg-white/20 transition-all leading-none"><Icon name="log-out" size={14} /> Keluar</button>
+                                    {isMasterAdmin && <button onClick={() => setViewMode('master_dashboard')} className="flex items-center gap-2 text-[10px] font-black uppercase bg-emerald-600 px-4 py-2.5 rounded-xl transition-all leading-none"><Icon name="shield-check" size={14} /> Master</button>}
+                                </div>
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                            <div 
-                                onClick={() => { setPinMode('family'); setShowPinPrompt(true); }} 
-                                className={`flex items-center justify-between p-4 rounded-3xl cursor-pointer transition-all border-2 
-                                ${isAdmin ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-slate-50 border-slate-100 text-slate-500 pulse-border'}`}
-                            >
-                                <div className="flex items-center gap-3">{isAdmin ? <Icon name="unlock" size={16} /> : <Icon name="lock" size={16} />} 
-                                <span className="text-[10px] font-black uppercase tracking-widest">{isAdmin ? 'Mode Edit Aktif' : 'Akses Masih Terkunci'}</span></div>
-                                <div className={`w-3 h-3 rounded-full ${isAdmin ? 'bg-emerald-500 animate-pulse' : 'bg-indigo-300'}`}></div>
-                            </div>
-                            
+                            <div onClick={() => { if(isAdmin) setIsAdmin(false); else { setPinMode('family'); setShowPinPrompt(true); } }} className={`flex items-center justify-between p-4 rounded-3xl cursor-pointer transition-all border-2 ${isAdmin ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-slate-50 border-slate-100 text-slate-500 pulse-border'}`}><div className="flex items-center gap-3">{isAdmin ? <Icon name="unlock" size={16} /> : <Icon name="lock" size={16} />}<span className="text-[10px] font-black uppercase tracking-widest leading-none">{isAdmin ? 'Mode Edit Aktif' : 'Akses Masih Terkunci'}</span></div><div className={`w-3 h-3 rounded-full ${isAdmin ? 'bg-emerald-500 animate-pulse' : 'bg-indigo-300'}`}></div></div>
                             {!isAdmin && <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100"><p className="text-[10px] font-bold text-indigo-700 leading-relaxed italic">Gunakan PIN default "1234" untuk membuka akses pengeditan data keluarga baru.</p></div>}
-
                             {selectedMember ? (
                                 <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
-                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Detail Anggota</span> <button onClick={() => setSelectedMember(null)} className="p-1 hover:bg-slate-50 rounded-lg"><Icon name="x" size={18}/></button></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Detail Profil</span> <button onClick={() => setSelectedMember(null)} className="p-1 hover:bg-slate-50 rounded-lg"><Icon name="x" size={18}/></button></div>
                                     <div className={`p-8 rounded-[3rem] shadow-xl border-t-8 flex flex-col items-center ${selectedMember.gender === 'Laki-laki' ? 'bg-indigo-50/50 border-indigo-600' : 'bg-rose-50/50 border-rose-600'}`}>
                                         <div className="w-28 h-28 rounded-[2.5rem] border-4 border-white shadow-2xl overflow-hidden mb-6 bg-white flex items-center justify-center">{selectedMember.photoUrl ? <img src={selectedMember.photoUrl} className="w-full h-full object-cover" /> : <Icon name="user" size={40} className="opacity-10" />}</div>
-                                        <h3 className="text-2xl font-black text-slate-800 text-center leading-none">{selectedMember.name}</h3>
-                                        <p className="text-[10px] font-black text-indigo-600 mt-3 uppercase tracking-widest px-4 py-1.5 bg-white rounded-full shadow-sm border border-slate-100">{getRole(selectedMember)}</p>
+                                        <h3 className="text-2xl font-black text-slate-800 text-center leading-none uppercase">{selectedMember.name}</h3>
+                                        <p className="text-[10px] font-black text-indigo-600 mt-3 uppercase tracking-widest px-4 py-1.5 bg-white rounded-full shadow-sm border border-slate-100 leading-none">{getRole(selectedMember)}</p>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3"><button onClick={() => handleEditMember(selectedMember)} className="flex items-center justify-center gap-2 bg-white border-2 border-slate-100 py-4 rounded-2xl text-[10px] font-black uppercase hover:border-indigo-600 transition-all"><Icon name="edit-2" size={14} /> Edit</button><button onClick={() => setShowDeleteConfirm(true)} className="flex items-center justify-center gap-2 bg-rose-50 text-rose-600 border-2 border-rose-100 py-4 rounded-2xl text-[10px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all"><Icon name="trash-2" size={14} /> Hapus</button></div>
-                                    <div className="space-y-3 pt-4 border-t border-slate-100">{!selectedMember.spouseId && <button onClick={() => openAddModal('spouse', selectedMember.id)} className="w-full flex items-center justify-center gap-3 bg-rose-600 text-white py-5 rounded-[2rem] text-[11px] font-black uppercase shadow-xl hover:bg-rose-700 active:scale-95 transition-all"><Icon name="heart" size={18} /> Tambah Pasangan</button>}<button onClick={() => openAddModal('child', selectedMember.id)} className="w-full flex items-center justify-center gap-3 bg-indigo-600 text-white py-5 rounded-[2rem] text-[11px] font-black uppercase shadow-xl hover:bg-indigo-700 active:scale-95 transition-all"><Icon name="plus" size={18} /> Tambah Anak</button></div>
+                                    <div className="grid grid-cols-2 gap-3"><button onClick={() => handleEditMember(selectedMember)} className="flex items-center justify-center gap-2 bg-white border-2 border-slate-100 py-4 rounded-2xl text-[10px] font-black uppercase hover:border-indigo-600 transition-all leading-none"><Icon name="edit-2" size={14} /> Edit</button><button onClick={() => setShowDeleteConfirm(true)} className="flex items-center justify-center gap-2 bg-rose-50 text-rose-600 border-2 border-rose-100 py-4 rounded-2xl text-[10px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all leading-none"><Icon name="trash-2" size={14} /> Hapus</button></div>
+                                    <div className="space-y-3 pt-4 border-t border-slate-100">{!selectedMember.spouseId && <button onClick={() => openAddModal('spouse', selectedMember.id)} className="w-full flex items-center justify-center gap-3 bg-rose-600 text-white py-5 rounded-[2rem] text-[11px] font-black uppercase shadow-xl hover:bg-rose-700 active:scale-95 transition-all leading-none"><Icon name="heart" size={18} /> Tambah Pasangan</button>}<button onClick={() => openAddModal('child', selectedMember.id)} className="w-full flex items-center justify-center gap-3 bg-indigo-600 text-white py-5 rounded-[2rem] text-[11px] font-black uppercase shadow-xl hover:bg-indigo-700 active:scale-95 transition-all leading-none"><Icon name="plus" size={18} /> Tambah Anak</button></div>
                                 </div>
-                            ) : <div className="text-center py-24 opacity-20"><Icon name="fingerprint" size={64} className="mx-auto mb-4" /><p className="text-xs font-bold leading-relaxed px-6">Pilih anggota keluarga pada diagram untuk mengelola profil.</p></div>}
+                            ) : <div className="text-center py-24 opacity-20 flex flex-col items-center"><Icon name="fingerprint" size={64} className="mb-4 text-slate-400" /><p className="text-xs font-bold leading-relaxed px-6 text-slate-400 uppercase tracking-widest">Pilih Anggota<br/>Untuk Mengelola Profil</p></div>}
                         </div>
                     </aside>
                     <main className="flex-1 relative overflow-hidden bg-slate-50 canvas-container" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
@@ -423,30 +525,54 @@
                         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#4f46e5 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
                         <div className="absolute inset-0 flex items-start justify-center transition-transform duration-75 origin-top" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
                             <div className="pt-64 pb-96 px-[1000px]">
-                                {treeData.length > 0 ? treeData.map(root => <div key={root.id} className="mb-48"><RecursiveNode node={root} /></div>) : <div className="mt-24 text-center space-y-8 p-20 border-4 border-dashed border-slate-200 rounded-[5rem]"><Icon name="users" size={80} className="text-slate-200 mx-auto" /><h3 className="text-3xl font-black text-slate-300">Pohon Keluarga Masih Kosong</h3><button onClick={() => openAddModal('child', null)} className="px-16 py-6 bg-indigo-600 text-white rounded-3xl font-black text-xl shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all">Mulai Garis Keturunan Pertama</button></div>}
+                                {treeData.length > 0 ? treeData.map(root => <div key={root.id} className="mb-48"><RecursiveNode node={root} selectedMember={selectedMember} setSelectedMember={setSelectedMember} getRole={getRole} /></div>) : <div className="mt-24 text-center space-y-8 p-20 border-4 border-dashed border-slate-200 rounded-[5rem]"><Icon name="users" size={80} className="text-slate-200 mx-auto" /><h3 className="text-3xl font-black text-slate-300">Pohon Keluarga Masih Kosong</h3><button onClick={() => openAddModal('child', null)} className="px-16 py-6 bg-indigo-600 text-white rounded-3xl font-black text-xl shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all leading-none">Mulai Garis Keturunan Pertama</button></div>}
                             </div>
                         </div>
                     </main>
 
-                    {/* Modals Umum */}
-                    {showPinPrompt && <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-2xl z-[100] flex items-center justify-center p-6"><div className="bg-white rounded-[4rem] p-16 max-w-sm w-full text-center space-y-10 shadow-2xl"><div className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl transition-all ${pinError ? 'bg-red-600 text-white animate-shake' : 'bg-indigo-600 text-white'}`}><Icon name="key-round" size={48} /></div><div><h3 className="text-3xl font-black text-slate-800 tracking-tighter leading-none">{pinMode === 'master' ? 'Master Access' : 'Buka Kunci Silsilah'}</h3><p className="text-slate-400 text-sm mt-4 font-medium leading-relaxed">Masukkan PIN keamanan untuk membuka akses pengelolaan data keluarga ini.</p></div><div className="space-y-6"><input type="password" maxLength={4} autoFocus placeholder="••••" className="w-full text-center text-5xl tracking-[1.5rem] py-8 rounded-[2rem] bg-slate-50 border-4 border-slate-100 outline-none focus:border-indigo-600 transition-all" value={pinInput} onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))} onKeyDown={(e) => e.key === 'Enter' && verifyPin()} /><div className="flex gap-4 pt-4"><button onClick={() => { setShowPinPrompt(false); setPinInput(''); }} className="flex-1 py-5 text-slate-400 font-black uppercase text-[11px] tracking-widest">Batal</button><button onClick={verifyPin} className="flex-[2] py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest shadow-xl hover:bg-indigo-700 transition-all">Buka Sekarang</button></div></div></div></div>}
+                    {/* Unified PIN Modal for Main App */}
+                    {showPinPrompt && (
+                        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-2xl z-[500] flex items-center justify-center p-6">
+                            <div className="bg-white rounded-[4rem] p-16 max-w-sm w-full text-center space-y-10 shadow-2xl animate-in zoom-in-95 duration-200">
+                                <div className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl transition-all ${pinError ? 'bg-red-600 text-white animate-shake shadow-red-200' : 'bg-indigo-600 text-white shadow-indigo-200'}`}><Icon name="key-round" size={48} /></div>
+                                <div><h3 className="text-3xl font-black text-slate-800 tracking-tighter leading-none uppercase">{pinMode === 'master' ? 'Master Access' : 'Buka Kunci Silsilah'}</h3><p className="text-slate-400 text-sm mt-4 font-medium leading-relaxed">Masukkan PIN keamanan untuk membuka akses pengelolaan data keluarga ini.</p></div>
+                                <div className="space-y-6"><input type="password" maxLength={4} autoFocus placeholder="••••" className="w-full text-center text-5xl tracking-[1.5rem] py-8 rounded-[2rem] bg-slate-50 border-4 border-slate-100 outline-none focus:border-indigo-600 transition-all font-bold" value={pinInput} onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))} onKeyDown={(e) => e.key === 'Enter' && verifyPin()} /><div className="flex gap-4 pt-4"><button onClick={() => { setShowPinPrompt(false); setPinInput(''); }} className="flex-1 py-5 text-slate-400 font-black uppercase text-[11px] tracking-widest leading-none">Batal</button><button onClick={verifyPin} className="flex-[2] py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest shadow-xl hover:bg-indigo-700 transition-all leading-none">Buka Sekarang</button></div></div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* MODAL EDIT PENGATURAN KELUARGA (Nama & PIN) */}
+                    {isEditingFamilySettings && (
+                        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[150] flex items-center justify-center p-6">
+                            <div className="bg-white rounded-[4rem] shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-300 overflow-hidden text-slate-800">
+                                <div className="p-10 border-b bg-slate-50 flex justify-between items-center"><h2 className="text-2xl font-black text-slate-800 tracking-tighter uppercase leading-none">Pengaturan Keluarga</h2><button onClick={() => setIsEditingFamilySettings(false)} className="p-2 hover:bg-white rounded-xl transition-all text-slate-400"><Icon name="x" size={24}/></button></div>
+                                <div className="p-10 space-y-6 bg-white">
+                                    <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 leading-none">Nama Keluarga Baru</label><input type="text" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-slate-800" value={familySettingsForm.name} onChange={(e) => setFamilySettingsForm({...familySettingsForm, name: e.target.value})} /></div>
+                                    <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 leading-none">PIN Akses Baru (4 Digit)</label><input type="password" maxLength={4} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-center text-2xl tracking-[1rem]" value={familySettingsForm.pin} onChange={(e) => setFamilySettingsForm({...familySettingsForm, pin: e.target.value.replace(/\D/g, '')})} /></div>
+                                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100"><p className="text-[9px] font-bold text-amber-700 leading-relaxed uppercase tracking-tighter">Hati-hati: Mengganti PIN akan mengeluarkan Anda dari Mode Edit. Pastikan Anda mengingat PIN yang baru.</p></div>
+                                </div>
+                                <div className="p-10 bg-slate-50 flex gap-4"><button onClick={() => setIsEditingFamilySettings(false)} className="flex-1 font-black text-slate-400 text-[11px] uppercase tracking-widest leading-none">Batal</button><button onClick={saveFamilySettings} className="flex-[2] py-5 bg-slate-800 text-white rounded-2xl font-black uppercase text-[11px] shadow-2xl hover:bg-black tracking-widest leading-none">Update Pengaturan</button></div>
+                            </div>
+                        </div>
+                    )}
+
                     {(isAdding || isEditing) && (
                         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-lg z-[100] flex items-center justify-center p-6 overflow-y-auto">
                             <div className="bg-white rounded-[4rem] shadow-2xl w-full max-w-3xl my-auto animate-in zoom-in-95 duration-300 flex flex-col md:flex-row overflow-hidden border border-white/50">
                                 <div className="w-full md:w-64 bg-slate-50 p-12 flex flex-col items-center justify-center space-y-8"><div className="w-40 h-40 rounded-[3rem] bg-white shadow-2xl border-8 border-white overflow-hidden flex items-center justify-center">{formData.photoUrl ? <img src={formData.photoUrl} className="w-full h-full object-cover" /> : <Icon name="image" size={56} className="text-slate-100" />}</div><div className="text-center space-y-2"><p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">Foto Profil</p></div></div>
                                 <div className="flex-1 flex flex-col">
-                                    <div className="p-10 border-b flex justify-between items-center bg-white"><h2 className="text-2xl font-black text-slate-800 tracking-tighter uppercase leading-none">{isEditing ? 'Ubah Informasi' : 'Tambah Anggota'}</h2><button onClick={closeModal} className="p-2 hover:bg-slate-50 rounded-xl transition-all"><Icon name="x" size={24}/></button></div>
+                                    <div className="p-10 border-b flex justify-between items-center bg-white"><h2 className="text-2xl font-black text-slate-800 tracking-tighter uppercase leading-none">{isEditing ? 'Ubah Informasi' : 'Tambah Anggota'}</h2><button onClick={closeModal} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400"><Icon name="x" size={24}/></button></div>
                                     <div className="p-10 space-y-6 overflow-y-auto max-h-[55vh] bg-white">
-                                        <div className="grid grid-cols-2 gap-6"><div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">Nama Lengkap</label><input type="text" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-slate-800" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} /></div><div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">Jenis Kelamin</label><select className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-slate-800" value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})}><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div></div>
-                                        <div className="grid grid-cols-2 gap-6"><div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">Tgl Lahir</label><input type="date" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-slate-800" value={formData.birthDate} onChange={(e) => setFormData({...formData, birthDate: e.target.value})} /></div><div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">Tautan Foto (URL)</label><input type="text" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-slate-800" value={formData.photoUrl} onChange={(e) => setFormData({...formData, photoUrl: e.target.value})} /></div></div>
-                                        <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">Biografi Singkat</label><textarea rows="3" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none resize-none font-medium text-slate-700" value={formData.bio} onChange={(e) => setFormData({...formData, bio: e.target.value})}></textarea></div>
+                                        <div className="grid grid-cols-2 gap-6"><div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest leading-none">Nama Lengkap</label><input type="text" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-slate-800" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} /></div><div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest leading-none">Jenis Kelamin</label><select className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-slate-800" value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})}><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div></div>
+                                        <div className="grid grid-cols-2 gap-6"><div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest leading-none">Tgl Lahir</label><input type="date" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-slate-800" value={formData.birthDate} onChange={(e) => setFormData({...formData, birthDate: e.target.value})} /></div><div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest leading-none">Tautan Foto (URL)</label><input type="text" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none font-bold text-slate-800" value={formData.photoUrl} onChange={(e) => setFormData({...formData, photoUrl: e.target.value})} /></div></div>
+                                        <div className="space-y-1.5"><label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest leading-none">Biografi Singkat</label><textarea rows="3" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-600 outline-none resize-none font-medium text-slate-700" value={formData.bio} onChange={(e) => setFormData({...formData, bio: e.target.value})}></textarea></div>
                                     </div>
-                                    <div className="p-10 bg-slate-50 flex gap-4"><button onClick={closeModal} className="flex-1 font-black text-slate-400 text-[11px] uppercase">Batal</button><button onClick={saveMember} className="flex-[2] py-5 bg-indigo-700 text-white rounded-2xl font-black uppercase text-[11px] shadow-2xl hover:bg-indigo-800 tracking-widest">Simpan Cloud</button></div>
+                                    <div className="p-10 bg-slate-50 flex gap-4"><button onClick={closeModal} className="flex-1 font-black text-slate-400 text-[11px] uppercase leading-none">Batal</button><button onClick={saveMember} className="flex-[2] py-5 bg-indigo-700 text-white rounded-2xl font-black uppercase text-[11px] shadow-2xl hover:bg-indigo-800 tracking-widest leading-none">Simpan Cloud</button></div>
                                 </div>
                             </div>
                         </div>
                     )}
-                    {showDeleteConfirm && <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[120] flex items-center justify-center p-6"><div className="bg-white rounded-[4rem] p-16 max-w-sm w-full text-center space-y-10 shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100"><div className="w-24 h-24 bg-rose-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-rose-600 shadow-inner"><Icon name="alert-circle" size={48} /></div><div><h3 className="text-3xl font-black text-slate-800 tracking-tighter leading-none">Hapus Permanen?</h3><p className="text-slate-500 text-sm mt-4 px-2 leading-relaxed font-medium">Data anggota akan dihapus secara permanen dari server.</p></div><div className="flex flex-col gap-4 pt-4"><button onClick={confirmDelete} className="w-full py-6 bg-rose-600 text-white rounded-[2rem] font-black uppercase text-[11px] tracking-widest shadow-xl hover:bg-rose-700 active:scale-95 transition-all">Ya, Hapus Sekarang</button><button onClick={closeModal} className="w-full py-4 text-slate-400 font-extrabold uppercase text-[11px] tracking-widest">Batalkan</button></div></div></div>}
+                    {showDeleteConfirm && <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[120] flex items-center justify-center p-6"><div className="bg-white rounded-[4rem] p-16 max-w-sm w-full text-center space-y-10 shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100"><div className="w-24 h-24 bg-rose-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-rose-600 shadow-inner"><Icon name="alert-circle" size={48} /></div><div><h3 className="text-3xl font-black text-slate-800 tracking-tighter leading-none">Hapus Permanen?</h3><p className="text-slate-500 text-sm mt-4 px-2 leading-relaxed font-medium">Data anggota akan dihapus secara permanen dari server.</p></div><div className="flex flex-col gap-4 pt-4"><button onClick={confirmDelete} className="w-full py-6 bg-rose-600 text-white rounded-[2rem] font-black uppercase text-[11px] tracking-widest shadow-xl hover:bg-rose-700 active:scale-95 transition-all leading-none">Ya, Hapus Sekarang</button><button onClick={closeModal} className="w-full py-4 text-slate-400 font-extrabold uppercase text-[11px] tracking-widest leading-none">Batalkan</button></div></div></div>}
                 </div>
             );
         };
